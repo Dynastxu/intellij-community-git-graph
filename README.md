@@ -1,5 +1,8 @@
 # intellij-community-git-graph
 
+[![CI](https://github.com/dynastxu/intellij-community-git-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/dynastxu/intellij-community-git-graph/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@dynastxu/intellij-community-git-graph.svg)](https://www.npmjs.com/package/@dynastxu/intellij-community-git-graph)
+
 A TypeScript port of the IntelliJ Community Edition VCS log commit graph.
 
 Input: a commit history (`id`, `parents`, `timestamp`) and refs.
@@ -388,6 +391,24 @@ Negative means that `a` is laid out more to the left.
   drawn to the neighbour row centre and clipped, vertical edges stop at the cell border.
   This is the same geometry as `SimpleGraphCellPainter`.
 - `GraphEdgeElement.from` and `to` are commit indexes. IntelliJ uses vertex ids.
+
+## Release
+
+CI runs on every push to `main` and on every pull request: lint, format check,
+typecheck, tests, and a `dist` artifact. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+Publishing runs for a `vX.Y.Z` tag or from the manual workflow:
+
+```sh
+git tag v0.1.0
+git push origin main v0.1.0
+```
+
+The publish workflow sends the package to npm and to GitHub Packages. The npm job uses
+[trusted publishing](https://docs.npmjs.com/trusted-publishers): configure the
+`@dynastxu/intellij-community-git-graph` package on npmjs.com with this repository and
+the `publish.yml` workflow. GitHub Packages uses the workflow `GITHUB_TOKEN`.
+See [`.github/workflows/publish.yml`](.github/workflows/publish.yml).
 
 ## License and attribution
 

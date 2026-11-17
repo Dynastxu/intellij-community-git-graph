@@ -19,7 +19,7 @@
     "build": "tsc -p tsconfig.json",
     "build:lib": "tsc -p tsconfig.json",
     "build:demo": "pnpm -C packages/demo build",
-    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm -C packages/demo typecheck",
+    "typecheck": "pnpm run build && tsc -p tsconfig.json --noEmit && pnpm -C packages/demo typecheck",
     "lint": "eslint . && pnpm -C packages/demo lint",
     "format": "prettier --write . && pnpm -C packages/demo format",
     "test": "node --test --test-isolation=none \"test/*.test.mjs\"",
@@ -55,5 +55,9 @@
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "typescript-eslint": "^8.73.0"
+  },
+  "homepage": "https://github.com/dynastxu/intellij-community-git-graph#readme",
+  "bugs": {
+    "url": "https://github.com/dynastxu/intellij-community-git-graph/issues"
   }
 }
