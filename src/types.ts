@@ -103,7 +103,8 @@ export interface SortContext {
  * - a function: a custom order. It receives {@link SortContext} and returns the usual
  *   commit index of every sorted row, top to bottom.
  */
-export type SortMode = 'intellisort' | 'input' | 'first-parent' | ((context: SortContext) => readonly number[] | Int32Array);
+export type SortMode =
+  'intellisort' | 'input' | 'first-parent' | ((context: SortContext) => readonly number[] | Int32Array);
 
 /** Context of a custom color resolver. */
 export interface ColorContext {

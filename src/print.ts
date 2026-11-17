@@ -9,7 +9,7 @@
  */
 import type { LayoutData, InternalEdge } from './graph';
 import { javaStringHash } from './graph';
-import type { FilterResult, VisibleLinearGraph } from './filter';
+import type { FilterResult } from './filter';
 import type {
   ColorResolver,
   CommitInput,
@@ -261,10 +261,7 @@ export function buildPrintModel(input: PrintInput): PrintModel {
 
     const elements: GraphEdgeElement[] = [];
 
-    const emitFragments = (
-      position: number,
-      edge: NormalEdge,
-    ): void => {
+    const emitFragments = (position: number, edge: NormalEdge): void => {
       const downPosition = positionInRow(row + 1, edge, 'down');
       const upPosition = positionInRow(row - 1, edge, 'up');
       const arrow = arrowType(edge, row);
@@ -396,7 +393,8 @@ export function buildPrintModel(input: PrintInput): PrintModel {
       });
     }
 
-    const rowElements = [...elements, node];    widthByRow[row] = Math.max(...rowElements.map((element) => element.position)) + 1;
+    const rowElements = [...elements, node];
+    widthByRow[row] = Math.max(...rowElements.map((element) => element.position)) + 1;
     rows.push({ row, commitIndex, commit, node, elements: rowElements });
   }
 

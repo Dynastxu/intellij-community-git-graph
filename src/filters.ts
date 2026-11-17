@@ -29,7 +29,12 @@ function pathMatches(file: string, pattern: string): boolean {
   const path = normalizePath(file);
   const wanted = normalizePath(pattern);
   if (wanted.includes('*')) {
-    const regex = new RegExp(`^${wanted.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
+    const regex = new RegExp(
+      `^${wanted
+        .split('*')
+        .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+        .join('.*')}$`,
+    );
     return regex.test(path);
   }
   return path === wanted || path.startsWith(`${wanted}/`);
@@ -59,10 +64,11 @@ function textPredicate(filter: Extract<Filter, { kind: 'text' }>): (commit: Comm
     return (commit) => fields(commit).some((value) => regex.test(value));
   }
   const needle = filter.matchCase === true ? filter.text : filter.text.toLowerCase();
-  return (commit) => fields(commit).some((value) => {
-    const haystack = filter.matchCase === true ? value : value.toLowerCase();
-    return haystack.includes(needle);
-  });
+  return (commit) =>
+    fields(commit).some((value) => {
+      const haystack = filter.matchCase === true ? value : value.toLowerCase();
+      return haystack.includes(needle);
+    });
 }
 
 /**
@@ -171,9 +177,10 @@ export function applyFilters(input: GraphInput, filters: readonly Filter[]): Fil
           if (toIndex === undefined) continue;
           addHeads([range.to]);
           const include = ancestors([toIndex]);
-          const exclude = range.from !== undefined && byId.has(range.from)
-            ? ancestors([byId.get(range.from) as number])
-            : new Set<number>();
+          const exclude =
+            range.from !== undefined && byId.has(range.from)
+              ? ancestors([byId.get(range.from) as number])
+              : new Set<number>();
           ranges.push({ include, exclude });
         }
         break;
@@ -181,7 +188,12 @@ export function applyFilters(input: GraphInput, filters: readonly Filter[]): Fil
     }
   }
 
-  const visible = heads === null ? null : ancestors((heads as string[]).map((id) => byId.get(id)).filter((index): index is number => index !== undefined));
+  const visible =
+    heads === null
+      ? null
+      : ancestors(
+          (heads as string[]).map((id) => byId.get(id)).filter((index): index is number => index !== undefined),
+        );
 
   const matched = commits.map((commit, index) => {
     if (visible !== null && !visible.has(index)) return false;

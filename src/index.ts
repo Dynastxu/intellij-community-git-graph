@@ -19,18 +19,8 @@ import {
 import { filterGraph } from './filter';
 import { buildPrintModel } from './print';
 import { assertTopologicalOrder, identityOrder, intelliSort } from './sort';
-import { indexCommits, sortTopologicallyByDate } from './topo';
-import type {
-  ColorResolver,
-  CommitInput,
-  GraphInput,
-  GraphLayout,
-  GraphOptions,
-  GraphResult,
-  HeadInfo,
-  RefInput,
-  SortContext,
-} from './types';
+import { indexCommits } from './topo';
+import type { GraphInput, GraphLayout, GraphOptions, GraphResult, HeadInfo, SortContext } from './types';
 
 export type * from './types';
 export { javaStringHash, naturalCompare, defaultHeadComparator } from './graph';
@@ -44,7 +34,10 @@ export function colorFromId(colorId: number): string {
   const rangeFix = (n: number): number => (Math.abs(n % 100) + 70) / 255;
   const [hue, ,] = rgbToHsb(rangeFix(colorId * 200 + 30), rangeFix(colorId * 130 + 50), rangeFix(colorId * 90 + 100));
   const [r, g, b] = hsbToRgb(hue, 0.4, 0.65);
-  const hex = (value: number): string => Math.round(value * 255).toString(16).padStart(2, '0');
+  const hex = (value: number): string =>
+    Math.round(value * 255)
+      .toString(16)
+      .padStart(2, '0');
   return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 

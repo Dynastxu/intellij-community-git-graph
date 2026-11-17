@@ -4,10 +4,42 @@ import test from 'node:test';
 import { applyFilters, mergeRepositories } from '../dist/index.js';
 
 const commits = [
-  { id: 'm', parents: ['a', 'b'], subject: 'merge feature', author: 'Alice', authorEmail: 'alice@example.com', timestamp: 500, files: ['src/app.ts'] },
-  { id: 'a', parents: ['c'], subject: 'add login', author: 'Bob', authorEmail: 'bob@example.com', timestamp: 400, files: ['src/login.ts'] },
-  { id: 'b', parents: ['c'], subject: 'fix docs', author: 'Alice', authorEmail: 'alice@example.com', timestamp: 300, files: ['docs/readme.md'] },
-  { id: 'c', parents: [], subject: 'initial', author: 'Bob', authorEmail: 'bob@example.com', timestamp: 100, files: ['src/app.ts'] },
+  {
+    id: 'm',
+    parents: ['a', 'b'],
+    subject: 'merge feature',
+    author: 'Alice',
+    authorEmail: 'alice@example.com',
+    timestamp: 500,
+    files: ['src/app.ts'],
+  },
+  {
+    id: 'a',
+    parents: ['c'],
+    subject: 'add login',
+    author: 'Bob',
+    authorEmail: 'bob@example.com',
+    timestamp: 400,
+    files: ['src/login.ts'],
+  },
+  {
+    id: 'b',
+    parents: ['c'],
+    subject: 'fix docs',
+    author: 'Alice',
+    authorEmail: 'alice@example.com',
+    timestamp: 300,
+    files: ['docs/readme.md'],
+  },
+  {
+    id: 'c',
+    parents: [],
+    subject: 'initial',
+    author: 'Bob',
+    authorEmail: 'bob@example.com',
+    timestamp: 100,
+    files: ['src/app.ts'],
+  },
 ];
 const refs = [
   { name: 'main', commit: 'm', kind: 'local' },
@@ -23,7 +55,7 @@ function matched(filters) {
 test('text filter searches subject, id, and author', () => {
   assert.deepEqual(matched([{ kind: 'text', text: 'login' }]), ['a']);
   assert.deepEqual(matched([{ kind: 'text', text: 'Alice' }]), ['m', 'b']);
-  assert.deepEqual(matched([{ kind: 'text', text: '^fix' , regex: true }]), ['b']);
+  assert.deepEqual(matched([{ kind: 'text', text: '^fix', regex: true }]), ['b']);
   assert.deepEqual(matched([{ kind: 'text', text: 'LOGIN', matchCase: true }]), []);
 });
 
@@ -74,10 +106,13 @@ test('parent and structure filters', () => {
 });
 
 test('different filters combine with AND', () => {
-  assert.deepEqual(matched([
-    { kind: 'user', users: ['alice'] },
-    { kind: 'text', text: 'docs' },
-  ]), ['b']);
+  assert.deepEqual(
+    matched([
+      { kind: 'user', users: ['alice'] },
+      { kind: 'text', text: 'docs' },
+    ]),
+    ['b'],
+  );
 });
 
 test('mergeRepositories merges the same commit and keeps roots on refs', () => {

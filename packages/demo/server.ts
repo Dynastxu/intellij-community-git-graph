@@ -173,7 +173,7 @@ export async function readGitHistory(
     root = (await runGit(['-C', target, 'rev-parse', '--show-toplevel'])).trim();
   } catch (error) {
     const detail = String((error as { stderr?: string }).stderr ?? '').trim();
-    throw new Error(`Not a git repository: ${target}${detail.length > 0 ? ` (${detail})` : ''}`);
+    throw new Error(`Not a git repository: ${target}${detail.length > 0 ? ` (${detail})` : ''}`, { cause: error });
   }
   if (root.length === 0) throw new Error(`Not a git repository: ${target}`);
 
@@ -205,12 +205,9 @@ export async function readGitHistory(
     ]),
   );
 
-  let headSha = '';
-  try {
-    headSha = (await runGit(['-C', root, 'rev-parse', 'HEAD'])).trim();
-  } catch {
-    headSha = '';
-  }
+  const headSha = await runGit(['-C', root, 'rev-parse', 'HEAD'])
+    .then((value) => value.trim())
+    .catch(() => '');
   if (headSha.length > 0) {
     refs.unshift({ name: 'HEAD', commit: headSha, kind: 'head' });
   }

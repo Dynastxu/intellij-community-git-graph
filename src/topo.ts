@@ -30,8 +30,7 @@ export function sortTopologicallyByDate(commits: readonly CommitInput[]): Commit
   // Max-heap by timestamp (newest first), then by input index.
   const heap: number[] = [];
   const less = (a: number, b: number): boolean =>
-    commits[a].timestamp > commits[b].timestamp ||
-    (commits[a].timestamp === commits[b].timestamp && a < b);
+    commits[a].timestamp > commits[b].timestamp || (commits[a].timestamp === commits[b].timestamp && a < b);
 
   const push = (value: number): void => {
     heap.push(value);

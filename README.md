@@ -99,12 +99,12 @@ cannot read `.git`.
 
 All demo code is TypeScript, next to the library:
 
-| File | Role | Output |
-| --- | --- | --- |
-| [`packages/demo/page.ts`](packages/demo/page.ts) | page logic: model building, canvas painting, controls, filters, folder dialog | `packages/demo/build/page.js` |
-| [`packages/demo/server.ts`](packages/demo/server.ts) | static server, folder listing, git reading, browser bundle | `packages/demo/build/server.js` |
-| [`packages/demo/git-graph.d.ts`](packages/demo/git-graph.d.ts) | ambient type of the `window.GitGraph` bundle | types only |
-| [`packages/demo/index.html`](packages/demo/index.html) | markup and CSS; loads two compiled scripts | page shell |
+| File                                                           | Role                                                                          | Output                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------- |
+| [`packages/demo/page.ts`](packages/demo/page.ts)               | page logic: model building, canvas painting, controls, filters, folder dialog | `packages/demo/build/page.js`   |
+| [`packages/demo/server.ts`](packages/demo/server.ts)           | static server, folder listing, git reading, browser bundle                    | `packages/demo/build/server.js` |
+| [`packages/demo/git-graph.d.ts`](packages/demo/git-graph.d.ts) | ambient type of the `window.GitGraph` bundle                                  | types only                      |
+| [`packages/demo/index.html`](packages/demo/index.html)         | markup and CSS; loads two compiled scripts                                    | page shell                      |
 
 Build steps:
 
@@ -133,11 +133,11 @@ The page reads the repository through the local server:
 
 **Browse… (system dialog)** calls the native folder picker of the operating system:
 
-| System | Command |
-| --- | --- |
+| System  | Command                                                   |
+| ------- | --------------------------------------------------------- |
 | Windows | PowerShell and `System.Windows.Forms.FolderBrowserDialog` |
-| macOS | `osascript` and `choose folder` |
-| Linux | `zenity --file-selection --directory`, then `kdialog` |
+| macOS   | `osascript` and `choose folder`                           |
+| Linux   | `zenity --file-selection --directory`, then `kdialog`     |
 
 The dialog opens on the desktop of the user who runs `ppnpm run demo`. A cancelled
 dialog returns `null` and changes nothing. If no system dialog is available (headless
@@ -153,13 +153,13 @@ A page in a browser cannot read `.git`: the objects are compressed and packed, a
 folder picker does not expose an absolute path. The demo therefore needs a local
 helper, and the library needs a browser bundle. Both come from `packages/demo/server.ts`:
 
-| Part | Purpose |
-| --- | --- |
-| `buildBundle` | wraps `dist` into `packages/demo/build/git-graph.js` (`window.GitGraph`) |
-| `readGitHistory` | calls `git log` and `git for-each-ref` |
-| `browseDirectory` | lists folders for the dialog |
-| `createDemoServer` | serves the page and the two API endpoints |
-| `main` | the command line: `bundle` or `serve` |
+| Part               | Purpose                                                                  |
+| ------------------ | ------------------------------------------------------------------------ |
+| `buildBundle`      | wraps `dist` into `packages/demo/build/git-graph.js` (`window.GitGraph`) |
+| `readGitHistory`   | calls `git log` and `git for-each-ref`                                   |
+| `browseDirectory`  | lists folders for the dialog                                             |
+| `createDemoServer` | serves the page and the two API endpoints                                |
+| `main`             | the command line: `bundle` or `serve`                                    |
 
 The demo has no dependencies beyond Node.js and `git`. The page logic is compiled from
 TypeScript, not written in JavaScript by hand.
@@ -208,7 +208,7 @@ interface GraphInput {
 }
 
 interface RefInput {
-  name: string;            // main, origin/main, v1.0, HEAD
+  name: string; // main, origin/main, v1.0, HEAD
   commit: string;
   kind?: 'local' | 'remote' | 'tag' | 'head' | 'other';
   color?: string | number; // optional explicit color
@@ -295,7 +295,7 @@ Filter kinds: `text` (subject, id, author; `regex` and `matchCase` options), `ha
 ### Row order
 
 ```ts
-buildGraph(input, { sort: 'input' });       // default: IntelliJ Normal (topological graph order)
+buildGraph(input, { sort: 'input' }); // default: IntelliJ Normal (topological graph order)
 buildGraph(input, { sort: 'intellisort' }); // IntelliSort (Bek)
 buildGraph(input, { sort: (ctx) => order }); // order is commitIndex per sorted row
 ```
@@ -369,14 +369,14 @@ Negative means that `a` is laid out more to the left.
 
 ## Mapping to IntelliJ
 
-| This library | IntelliJ |
-| --- | --- |
-| `buildPermanentData`, `PermanentGraph` | `PermanentLinearGraphBuilder`, `PermanentLinearGraphImpl` |
-| `buildLayout` | `GraphLayoutBuilder`, `GraphLayoutImpl` |
-| `intelliSort` | `BekSorter`, `BekBranchCreator`, `BekBranchMerger`, `BekEdgeRestrictions` |
-| `filterGraph`, `VisibleLinearGraph` | `FilteredController`, `FirstParentController`, `DottedFilterEdgesGenerator` |
-| `buildPrintModel` | `PrintElementGeneratorImpl`, `EdgesInRowGenerator`, `GraphElementComparatorByLayoutIndex` |
-| `colorFromId` | `DefaultColorGenerator` |
+| This library                           | IntelliJ                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `buildPermanentData`, `PermanentGraph` | `PermanentLinearGraphBuilder`, `PermanentLinearGraphImpl`                                 |
+| `buildLayout`                          | `GraphLayoutBuilder`, `GraphLayoutImpl`                                                   |
+| `intelliSort`                          | `BekSorter`, `BekBranchCreator`, `BekBranchMerger`, `BekEdgeRestrictions`                 |
+| `filterGraph`, `VisibleLinearGraph`    | `FilteredController`, `FirstParentController`, `DottedFilterEdgesGenerator`               |
+| `buildPrintModel`                      | `PrintElementGeneratorImpl`, `EdgesInRowGenerator`, `GraphElementComparatorByLayoutIndex` |
+| `colorFromId`                          | `DefaultColorGenerator`                                                                   |
 
 ## Differences from IntelliJ
 

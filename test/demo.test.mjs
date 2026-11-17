@@ -15,7 +15,10 @@ function stubCanvas(window, context = null) {
 /** Records the 2D calls of the graph painter. */
 function recordingContext() {
   const calls = [];
-  const record = (name) => (...args) => calls.push([name, ...args]);
+  const record =
+    (name) =>
+    (...args) =>
+      calls.push([name, ...args]);
   return {
     calls,
     setTransform: record('setTransform'),
@@ -135,7 +138,10 @@ test('the demo page paints nodes and straight half-edges on the canvas', async (
     assert.deepEqual(errors, []);
     const calls = context.calls;
     assert.ok(calls.filter((call) => call[0] === 'arc').length >= 18, 'one dot per row');
-    assert.ok(calls.some((call) => call[0] === 'stroke'), 'edges are stroked');
+    assert.ok(
+      calls.some((call) => call[0] === 'stroke'),
+      'edges are stroked',
+    );
 
     // Row height 30: diagonal edges end at the neighbour row centre, rowHeight + rowCenter = 45.
     assert.ok(calls.some((call) => call[0] === 'lineTo' && Math.abs(call[2] - 45) < 0.01));

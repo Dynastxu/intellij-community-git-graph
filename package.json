@@ -20,12 +20,13 @@
     "build:lib": "tsc -p tsconfig.json",
     "build:demo": "pnpm -C packages/demo build",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm -C packages/demo typecheck",
-    "lint": "pnpm -C packages/demo lint",
-    "format": "pnpm -C packages/demo format",
+    "lint": "eslint . && pnpm -C packages/demo lint",
+    "format": "prettier --write . && pnpm -C packages/demo format",
     "test": "node --test --test-isolation=none \"test/*.test.mjs\"",
     "pretest": "pnpm run build && pnpm run build:demo",
     "demo": "pnpm run build && pnpm run build:demo && node packages/demo/build/server.js serve --open",
-    "serve:demo": "node packages/demo/build/server.js serve"
+    "serve:demo": "node packages/demo/build/server.js serve",
+    "format:check": "prettier --check . && pnpm -C packages/demo format:check"
   },
   "keywords": [
     "git",
@@ -48,6 +49,11 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "jsdom": "^31.0.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript-eslint": "^8.73.0"
   }
 }

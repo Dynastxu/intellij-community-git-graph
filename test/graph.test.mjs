@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  buildGraph,
-  colorFromId,
-  sortTopologicallyByDate,
-} from '../dist/index.js';
+import { buildGraph, colorFromId, sortTopologicallyByDate } from '../dist/index.js';
 
 /** A linear history: c3 -> c2 -> c1 -> c0. */
 function linearHistory() {
@@ -97,10 +93,7 @@ test('a custom sort function controls the row order', () => {
 });
 
 test('a custom sort that breaks the topological order is rejected', () => {
-  assert.throws(
-    () => buildGraph(mergeHistory(), { sort: () => [3, 2, 1, 0] }),
-    /not topological/,
-  );
+  assert.throws(() => buildGraph(mergeHistory(), { sort: () => [3, 2, 1, 0] }), /not topological/);
 });
 
 test('hiding a commit contracts it into a dashed edge', () => {
@@ -125,10 +118,7 @@ test('first-parent mode keeps branch heads and hides merged edges', () => {
   const result = buildGraph(mergeHistory(), { firstParent: true });
   // IntelliJ keeps the heads of the visible branches, so the feature head stays.
   assert.deepEqual(rowsOf(result), ['m', 'a', 'b', 'c']);
-  assert.deepEqual(
-    result.edges.map((edge) => `${edge.from}-${edge.to}`).sort(),
-    ['0-1', '1-3', '2-3'],
-  );
+  assert.deepEqual(result.edges.map((edge) => `${edge.from}-${edge.to}`).sort(), ['0-1', '1-3', '2-3']);
 });
 
 test('a missing parent becomes a terminal arrow', () => {
@@ -188,7 +178,10 @@ test('the default color id follows GraphColorManagerImpl', () => {
   const headNode = result.rows.find((row) => row.commit.id === 'm').node;
   const mergedNode = result.rows.find((row) => row.commit.id === 'b').node;
   // The head column takes the hash of the head ref.
-  assert.equal(headNode.colorId, 'main'.split('').reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 0));
+  assert.equal(
+    headNode.colorId,
+    'main'.split('').reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 0),
+  );
   // Every other column takes its layout index as the color id.
   assert.equal(mergedNode.column, 2);
   assert.equal(mergedNode.colorId, 2);

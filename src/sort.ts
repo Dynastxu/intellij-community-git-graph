@@ -298,7 +298,11 @@ function mergeBranches(
  *
  * @returns the usual node index of every sorted row, top to bottom
  */
-export function intelliSort(graph: LinearGraphLike, layout: LayoutData, timestamp: (node: number) => number): Int32Array {
+export function intelliSort(
+  graph: LinearGraphLike,
+  layout: LayoutData,
+  timestamp: (node: number) => number,
+): Int32Array {
   const { branches, restrictions } = createBranches(graph, layout);
   const result = mergeBranches(branches, restrictions, timestamp, graph.nodesCount);
 
@@ -320,8 +324,6 @@ export function identityOrder(nodesCount: number): Int32Array {
 export function assertTopologicalOrder(graph: LinearGraphLike, sortedToUsual: Int32Array): void {
   const reversed = findReversedEdge(graph, sortedToUsual);
   if (reversed !== null) {
-    throw new Error(
-      `The order is not topological: edge ${reversed.up} -> ${reversed.down} points upwards`,
-    );
+    throw new Error(`The order is not topological: edge ${reversed.up} -> ${reversed.down} points upwards`);
   }
 }
