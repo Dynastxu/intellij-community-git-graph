@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IntelliJ commit graph — live demo</title>
+  <style>
+    :root {
+      --fg: #1f2328;
+      --muted: #667085;
+      --line: #d0d7de;
+      --bg: #ffffff;
+      --panel: #f6f8fa;
+      --accent: #0969da;
+      --danger: #cf222e;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--fg);
+      background: var(--bg);
+      font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    header h1 { margin: 0 0 4px; font-size: 18px; font-weight: 650; }
+    header p { margin: 0; color: var(--muted); font-size: 13px; }
+    header code { font-size: 12px; }
+    main { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: calc(100vh - 90px); min-height: 420px; }
+    aside {
+      padding: 16px;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      overflow: auto;
+    }
+    fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+    legend { margin: 0 0 8px; padding: 0; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    label { display: block; margin: 0 0 10px; font-size: 13px; }
+    label > span { display: block; margin-bottom: 4px; color: var(--muted); }
+    select, input[type="text"], textarea {
+      width: 100%;
+      padding: 6px 8px;
+      font: inherit;
+      color: inherit;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    textarea { min-height: 220px; font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    input[type="range"] { width: 100%; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    .row output { min-width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .check { display: flex; gap: 8px; align-items: center; margin: 0 0 8px; }
+    .check input { margin: 0; }
+    .check label { margin: 0; }
+    button {
+      padding: 6px 10px;
+      font: inherit;
+      color: #fff;
+      background: var(--accent);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button.secondary { color: var(--fg); background: #fff; border-color: var(--line); }
+    button:active { transform: translateY(1px); }
+    .buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .error { margin: 8px 0 0; color: var(--danger); font-size: 12px; white-space: pre-wrap; }
+    .stage { display: flex; flex-direction: column; min-height: 0; padding: 18px 22px 22px; }
+    .stats { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+    .stats b { color: var(--fg); font-weight: 600; }
+    .log-list { position: relative; flex: 1; min-height: 240px; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+    .log-scroll { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; }
+    .log-rows { position: relative; }
+    .log-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding-right: 12px; white-space: nowrap; font: 12px system-ui, sans-serif; }
+    .log-row:hover { background: #f6f8fa; }
+    .log-subject { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .log-subject .ref { display: inline-block; margin-right: 4px; padding: 0 6px; color: inherit; border: 1px solid currentColor; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 16px; }
+    .log-subject .subject { color: var(--fg); }
+    .log-hash { width: 78px; flex: none; text-align: right; color: #a0a6b1; font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .log-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+    .hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    .source { margin: 10px 0 0; color: var(--muted); font-size: 12px; word-break: break-all; }
+    .modal { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .38); z-index: 20; }
+    .modal[hidden] { display: none; }
+    .modal-card { width: min(720px, 94vw); max-height: 82vh; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 10px; box-shadow: 0 20px 50px rgba(15, 23, 42, .28); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .modal-head h2 { margin: 0; font-size: 15px; }
+    .modal-body { padding: 12px 16px; overflow: auto; }
+    .modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--line); }
+    .folder-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; margin-bottom: 10px; }
+    .folder-roots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .folder-roots button { padding: 3px 8px; font-size: 12px; }
+    #folderList { max-height: 300px; margin: 0; padding: 0; overflow: auto; list-style: none; border: 1px solid var(--line); border-radius: 8px; }
+    #folderList li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #eef1f4; cursor: pointer; }
+    #folderList li:last-child { border-bottom: 0; }
+    #folderList li:hover { background: var(--panel); }
+    #folderList .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #folderList .enter { color: var(--muted); }
+    #folderList .repo { padding: 2px 8px; font: 11px ui-monospace, monospace; color: #fff; background: var(--accent); border: 0; border-radius: 999px; cursor: pointer; }
+    .close { padding: 2px 8px; font-size: 18px; line-height: 1; color: var(--muted); background: transparent; border: 0; cursor: pointer; }
+    .inline { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; }
+    .inline input { width: 92px; padding: 4px 6px; font: inherit; border: 1px solid var(--line); border-radius: 6px; }
+    @media (max-width: 820px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>IntelliJ commit graph — live demo</h1>
+    <p>
+      A port of the IntelliJ VCS log graph. The page calls <code>buildGraph()</code> and draws the
+      returned rows, nodes, and edge fragments. Sort, filter, color, and stroke width are options.
+    </p>
+  </header>
+
+  <main>
+    <aside>
+      <fieldset>
+        <legend>Rows</legend>
+        <label>
+          <span>Sort</span>
+          <select id="sort">
+            <option value="input">Normal (graph order)</option>
+            <option value="intellisort">IntelliSort (Bek)</option>
+            <option value="first-parent">First parent</option>
+          </select>
+        </label>
+        <label>
+          <span>Show only ancestors of</span>
+          <select id="heads"><option value="all">All refs</option></select>
+        </label>
+        <label>
+          <span>Hide commit ids that contain</span>
+          <input id="hide" type="text" placeholder="for example 8c1e" autocomplete="off" />
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Paint</legend>
+        <label>
+          <span>Colors</span>
+          <select id="colors">
+            <option value="intellij">IntelliJ default (color id)</option>
+            <option value="branch">Branch palette</option>
+            <option value="mono">Monochrome</option>
+          </select>
+        </label>
+        <label>
+          <span>Row height</span>
+          <div class="row"><input id="rowHeight" type="range" min="20" max="46" value="30" /><output for="rowHeight">30</output></div>
+        </label>
+        <div class="check"><input id="showRefs" type="checkbox" checked /><label for="showRefs">Ref labels</label></div>
+        <div class="check"><input id="showHashes" type="checkbox" checked /><label for="showHashes">Commit hashes</label></div>
+        <div class="check"><input id="showArrows" type="checkbox" /><label for="showArrows">Long edge marks</label></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Input</legend>
+        <details>
+          <summary>Edit the history (JSON)</summary>
+          <textarea id="data" spellcheck="false"></textarea>
+          <div class="buttons">
+            <button id="apply" type="button">Apply</button>
+            <button id="reset" type="button" class="secondary">Reset</button>
+          </div>
+          <p class="error" id="error" hidden></p>
+        </details>
+        <div class="buttons">
+          <button id="copy" type="button" class="secondary">Copy drawable JSON</button>
+        </div>
+        <div class="buttons">
+          <button id="openFolder" type="button" class="secondary">Open a git folder…</button>
+        </div>
+        <p class="source" id="source">Source: built-in sample</p>
+      </fieldset>
+
+      <p class="hint">
+        The copied JSON is the exact output of <code>buildGraph()</code>: one entry per row, with
+        <code>position</code>, <code>otherPosition</code>, <code>style</code>, <code>arrow</code>,
+        and <code>colorId</code> for every element.
+      </p>
+    </aside>
+
+    <section class="stage">
+      <p class="stats" id="stats"></p>
+      <div id="list" class="log-list" tabindex="0">
+        <div id="scroll" class="log-scroll">
+          <div id="rows" class="log-rows"></div>
+        </div>
+        <canvas id="graphCanvas" class="log-canvas" aria-label="Commit graph"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <div id="folderModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="folderTitle">
+      <div class="modal-head">
+        <h2 id="folderTitle">Open a git repository</h2>
+        <button type="button" class="close" id="folderCancel" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="folder-bar">
+          <button type="button" id="folderUp" class="secondary">Up</button>
+          <input id="folderPath" type="text" spellcheck="false" aria-label="Folder path" />
+          <button type="button" id="folderGo" class="secondary">Go</button>
+        </div>
+        <div class="folder-roots" id="folderRoots"></div>
+        <ul id="folderList" aria-label="Folders"></ul>
+        <p class="hint">
+          Click a folder to enter it. The <b>git</b> badge opens that repository.
+          The page reads the repository with the local <code>git</code> command through the demo server.
+        </p>
+        <p class="error" id="folderError" hidden></p>
+      </div>
+      <div class="modal-foot">
+        <label class="inline">Commits <input id="gitLimit" type="number" min="50" max="5000" step="50" value="1000" /></label>
+        <div class="buttons">
+          <button type="button" id="folderPick" class="secondary">Browse… (system dialog)</button>
+          <button type="button" id="folderOpen">Open current folder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./build/git-graph.js"></script>
+  <script src="./build/page.js"></script>
+</body>
+</html>
