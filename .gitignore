@@ -11,6 +11,9 @@ yarn-error.log*
 .vscode/*
 /dist
 
-/demo/build
+/packages/demo/build
 /.idea
 .pnpm-debug.log*
+
+/packages/demo/node_modules
+/packages/demo/build

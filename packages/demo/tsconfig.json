@@ -3,23 +3,15 @@
     "target": "es2022",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "lib": [
-      "es2022",
-      "dom",
-      "dom.iterable"
-    ],
-    "outDir": "demo/build",
-    "rootDir": "demo",
+    "moduleDetection": "legacy",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "outDir": "build",
+    "rootDir": ".",
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "types": [
-      "node"
-    ],
-    "moduleDetection": "legacy"
+    "types": ["node"]
   },
-  "include": [
-    "demo/**/*.ts"
-  ]
+  "include": ["*.ts"]
 }

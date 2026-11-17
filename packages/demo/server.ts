@@ -16,13 +16,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { homedir } from 'node:os';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 
-import type { CommitInput, RefInput } from '../dist/index';
+import type { CommitInput, RefInput } from '@dynastxu/intellij-community-git-graph';
 
 const UNIT = '\u001f';
 const DEFAULT_PORT = 4173;
 
 const DEMO_DIR = resolve(__dirname, '..');
-const PROJECT_DIR = resolve(DEMO_DIR, '..');
+const PROJECT_DIR = resolve(DEMO_DIR, '..', '..');
 const DIST_DIR = join(PROJECT_DIR, 'dist');
 const BUNDLE_TARGET = join(__dirname, 'git-graph.js');
 
@@ -115,17 +115,42 @@ export function parseRefs(output: string): RefInput[] {
   return refs;
 }
 
-/** Parses `git log --pretty=format:%H<US>%P<US>%ct<US>%s`. */
+const RECORD = '\u001e';
+
+/** Parses `git log --name-only --pretty=format:%x1e%H<US>%P<US>%ct<US>%an<US>%ae<US>%s`. */
 export function parseCommits(output: string): CommitInput[] {
+  const records = output.includes(RECORD) ? output.split(RECORD) : [output];
   const commits: CommitInput[] = [];
-  for (const line of lines(output)) {
-    const [id, parents = '', seconds, subject] = line.split(UNIT);
+  const legacy = !output.includes(RECORD);
+  for (const record of records) {
+    const recordLines = record.split('\n').map((line) => (line.endsWith('\r') ? line.slice(0, -1) : line));
+    const header = recordLines[0];
+    if (header === undefined || header.length === 0) continue;
+    if (legacy) {
+      for (const line of recordLines) {
+        const [oldId, oldParents = '', oldSeconds, oldSubject] = line.split(UNIT);
+        if (oldId === undefined || oldId.length === 0) continue;
+        commits.push({
+          id: oldId,
+          parents: oldParents.length > 0 ? oldParents.split(' ') : [],
+          subject: oldSubject !== undefined && oldSubject.length > 0 ? oldSubject : undefined,
+          timestamp: Number(oldSeconds) * 1000,
+        });
+      }
+      continue;
+    }
+    const [id, parents = '', seconds, author, authorEmail, subject] = header.split(UNIT);
     if (id === undefined) continue;
+    const files = recordLines.slice(1).filter((line) => line.length > 0);
     commits.push({
       id,
       parents: parents.length > 0 ? parents.split(' ') : [],
       subject: subject !== undefined && subject.length > 0 ? subject : undefined,
+      author: author !== undefined && author.length > 0 ? author : undefined,
+      authorEmail: authorEmail !== undefined && authorEmail.length > 0 ? authorEmail : undefined,
       timestamp: Number(seconds) * 1000,
+      authorTime: Number(seconds) * 1000,
+      files: files.length > 0 ? files : undefined,
     });
   }
   return commits;
@@ -154,7 +179,8 @@ export async function readGitHistory(
 
   const max = Math.max(1, Math.min(5000, Math.trunc(limit) || 1000));
   const logOutput = await runGit([
-    '-C', root,
+    '-C',
+    root,
     'log',
     '--date-order',
     '--no-color',
@@ -162,18 +188,22 @@ export async function readGitHistory(
     '--exclude=refs/stash',
     '--exclude=refs/notes/*',
     '--all',
-    `--pretty=format:%H${UNIT}%P${UNIT}%ct${UNIT}%s`,
+    `--pretty=format:${RECORD}%H${UNIT}%P${UNIT}%ct${UNIT}%an${UNIT}%ae${UNIT}%s`,
+    '--name-only',
   ]);
 
   const all = parseCommits(logOutput);
   const truncated = all.length > max;
   const commits = truncated ? all.slice(0, max) : all;
 
-  const refs = parseRefs(await runGit([
-    '-C', root,
-    'for-each-ref',
-    `--format=%(refname)${UNIT}%(refname:short)${UNIT}%(objectname)${UNIT}%(*objectname)`,
-  ]));
+  const refs = parseRefs(
+    await runGit([
+      '-C',
+      root,
+      'for-each-ref',
+      `--format=%(refname)${UNIT}%(refname:short)${UNIT}%(objectname)${UNIT}%(*objectname)`,
+    ]),
+  );
 
   let headSha = '';
   try {
@@ -182,12 +212,6 @@ export async function readGitHistory(
     headSha = '';
   }
   if (headSha.length > 0) {
-    let headName = 'HEAD';
-    try {
-      headName = (await runGit(['-C', root, 'symbolic-ref', '--short', '-q', 'HEAD'])).trim() || 'HEAD';
-    } catch {
-      headName = 'HEAD';
-    }
     refs.unshift({ name: 'HEAD', commit: headSha, kind: 'head' });
   }
 
@@ -242,9 +266,10 @@ export async function browseDirectory(path: string): Promise<BrowseResult> {
 }
 
 /** The local API of the demo. `git` and `pick` are injectable for tests. */
-export function createDemoApi(
-  { git = readGitHistory, pick = pickFolder }: { git?: DemoApi['git']; pick?: DemoApi['pick'] } = {},
-): DemoApi {
+export function createDemoApi({
+  git = readGitHistory,
+  pick = pickFolder,
+}: { git?: DemoApi['git']; pick?: DemoApi['pick'] } = {}): DemoApi {
   return {
     browse: browseDirectory,
     git: (path, options) => git(path, options),
@@ -255,25 +280,20 @@ export function createDemoApi(
 /** Runs a native dialog command. A non-zero exit code means that the user cancelled. */
 function runPicker(command: string, args: string[]): Promise<string | null> {
   return new Promise((resolvePromise, reject) => {
-    execFile(
-      command,
-      args,
-      { windowsHide: true, timeout: 10 * 60 * 1000, maxBuffer: 1024 * 1024 },
-      (error, stdout) => {
-        if (error === null) {
-          const selected = stdout.trim();
-          resolvePromise(selected.length > 0 ? selected : null);
-          return;
-        }
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') {
-          reject(httpError(`Native folder dialog not found: ${command}`, 501));
-          return;
-        }
-        // A non-zero exit code or a killed process means "cancelled".
-        resolvePromise(null);
-      },
-    );
+    execFile(command, args, { windowsHide: true, timeout: 10 * 60 * 1000, maxBuffer: 1024 * 1024 }, (error, stdout) => {
+      if (error === null) {
+        const selected = stdout.trim();
+        resolvePromise(selected.length > 0 ? selected : null);
+        return;
+      }
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') {
+        reject(httpError(`Native folder dialog not found: ${command}`, 501));
+        return;
+      }
+      // A non-zero exit code or a killed process means "cancelled".
+      resolvePromise(null);
+    });
   });
 }
 
@@ -286,9 +306,10 @@ function pickWindowsFolder(): Promise<string | null> {
   ].join('; ');
 
   const systemRoot = process.env.SystemRoot;
-  const powershell = systemRoot !== undefined
-    ? join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-    : 'powershell.exe';
+  const powershell =
+    systemRoot !== undefined
+      ? join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+      : 'powershell.exe';
   return runPicker(existsSync(powershell) ? powershell : 'powershell.exe', ['-NoProfile', '-STA', '-Command', script]);
 }
 
@@ -331,9 +352,10 @@ const MIME: Record<string, string> = {
 };
 
 /** Serves the demo page and the local API. Pass `api: null` to disable the API. */
-export function createDemoServer(
-  { root = DEMO_DIR, api = createDemoApi() }: { root?: string; api?: DemoApi | null } = {},
-): Server {
+export function createDemoServer({
+  root = DEMO_DIR,
+  api = createDemoApi(),
+}: { root?: string; api?: DemoApi | null } = {}): Server {
   const rootDir = resolve(root);
 
   return createServer(async (request: IncomingMessage, response: ServerResponse) => {
@@ -378,7 +400,11 @@ export function createDemoServer(
               limit: Number(url.searchParams.get('limit') ?? '1000'),
             });
           } else {
-            send(404, JSON.stringify({ error: `Unknown endpoint: ${url.pathname}` }), 'application/json; charset=utf-8');
+            send(
+              404,
+              JSON.stringify({ error: `Unknown endpoint: ${url.pathname}` }),
+              'application/json; charset=utf-8',
+            );
             return;
           }
           send(200, JSON.stringify(payload), 'application/json; charset=utf-8');
@@ -449,11 +475,13 @@ export function openBrowser(url: string): void {
 
 /** Builds `demo/build/git-graph.js` from `dist` as a classic IIFE bundle. */
 export async function buildBundle(): Promise<{ target: string; size: number; rows: number }> {
-  const modules = ['index', 'types', 'graph', 'sort', 'filter', 'print'];
-  const bodies = await Promise.all(modules.map(async (name) => {
-    const code = await readFile(join(DIST_DIR, `${name}.js`), 'utf8');
-    return `  ${JSON.stringify(name)}: function (module, exports, require) {\n${code}\n  }`;
-  }));
+  const modules = ['index', 'types', 'graph', 'sort', 'filter', 'print', 'topo', 'merge', 'filters'];
+  const bodies = await Promise.all(
+    modules.map(async (name) => {
+      const code = await readFile(join(DIST_DIR, `${name}.js`), 'utf8');
+      return `  ${JSON.stringify(name)}: function (module, exports, require) {\n${code}\n  }`;
+    }),
+  );
 
   const bundle = `/* Generated by demo/server.ts from src. Do not edit. */
 (function (global) {
@@ -479,7 +507,7 @@ ${bodies.join(',\n')}
   await writeFile(BUNDLE_TARGET, bundle);
 
   // Smoke test: the bundle must build a graph with a browser-like global.
-  const sandbox: { GitGraph?: typeof import('../dist/index') } = {};
+  const sandbox: { GitGraph?: typeof import('@dynastxu/intellij-community-git-graph') } = {};
   new Function('window', 'globalThis', bundle)(sandbox, sandbox);
   const graph = sandbox.GitGraph?.buildGraph({
     commits: [

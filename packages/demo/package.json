@@ -1,0 +1,25 @@
+{
+  "name": "@dynastxu/git-graph-demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser demo of the IntelliJ Community VCS log graph port",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build/server.js bundle",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "serve": "node build/server.js serve"
+  },
+  "dependencies": {
+    "@dynastxu/intellij-community-git-graph": "workspace:*"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}

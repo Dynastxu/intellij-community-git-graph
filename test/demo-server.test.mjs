@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
-import { createDemoServer, listen } from '../demo/build/server.js';
+import { createDemoServer, listen } from '../packages/demo/build/server.js';
 
 test('the demo server serves the page, the bundle, and only the demo directory', async () => {
-  const server = createDemoServer({ root: resolve('demo') });
+  const server = createDemoServer({ root: resolve('packages/demo') });
   const port = await listen(server, 0);
 
   try {
@@ -31,8 +31,14 @@ test('the demo server serves the page, the bundle, and only the demo directory',
     const missing = await fetch(`${url}/does-not-exist.txt`);
     assert.equal(missing.status, 404);
 
+    // An encoded parent segment must stay inside the demo root.
     const traversal = await fetch(`${url}/..%2fpackage.json`);
-    assert.ok([403, 404].includes(traversal.status), `traversal status ${traversal.status}`);
+    if (traversal.status === 200) {
+      const body = await traversal.json();
+      assert.equal(body.name, '@dynastxu/git-graph-demo');
+    } else {
+      assert.ok([403, 404].includes(traversal.status), `traversal status ${traversal.status}`);
+    }
   } finally {
     await new Promise((done) => server.close(done));
   }

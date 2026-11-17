@@ -17,7 +17,7 @@ The port follows `platform/vcs-log/graph` of [intellij-community](https://github
 
 ## Install and build
 
-The package manager is pnpm (`packageManager` in `package.json`).
+The package manager is pnpm. The demo is a private workspace package in `packages/demo`.
 
 ```sh
 pnpm install
@@ -25,10 +25,16 @@ pnpm run build
 pnpm test
 ```
 
+The published package is `@dynastxu/intellij-community-git-graph`:
+
+```sh
+pnpm add @dynastxu/intellij-community-git-graph
+```
+
 ## Quick start
 
 ```ts
-import { buildGraph, colorFromId, sortTopologicallyByDate } from 'intellij-community-git-graph';
+import { buildGraph, colorFromId, sortTopologicallyByDate } from '@dynastxu/intellij-community-git-graph';
 
 const input = {
   commits: sortTopologicallyByDate([
@@ -60,14 +66,14 @@ for (const row of graph.rows) {
 }
 ```
 
-`demo/index.html` is a live demo. It draws the model in the browser and lets you
+`packages/demo/index.html` is a live demo. It draws the model in the browser and lets you
 change the sort, the filters, the colors, and the row height. It can also read the
 history of a folder on this machine.
 
 ## Live demo
 
 ```sh
-pnpm run demo
+ppnpm run demo
 ```
 
 The command builds the library and the demo, starts a local server, prints the URL, and
@@ -82,10 +88,10 @@ opens the browser:
 If the port is busy, the server takes the next free port. If the browser does not open,
 copy the printed URL. Stop the server with `Ctrl+C`.
 
-`pnpm run serve:demo` starts the server without a rebuild. `node demo/build/server.js serve --port 8080`
-sets another port. `node demo/build/server.js bundle` only rebuilds the browser bundle.
+`pnpm run serve:demo` starts the server without a rebuild. `node packages/demo/build/server.js serve --port 8080`
+sets another port. `node packages/demo/build/server.js bundle` only rebuilds the browser bundle.
 
-The page also works from `file://` without a server: open `demo/index.html` directly
+The page also works from `file://` without a server: open `packages/demo/index.html` directly
 after `pnpm run build`. In that mode the folder picker is disabled, because a browser
 cannot read `.git`.
 
@@ -95,17 +101,17 @@ All demo code is TypeScript, next to the library:
 
 | File | Role | Output |
 | --- | --- | --- |
-| [`demo/page.ts`](demo/page.ts) | page logic: model building, SVG drawing, controls, folder dialog | `demo/build/page.js` |
-| [`demo/server.ts`](demo/server.ts) | static server, folder listing, git reading, browser bundle | `demo/build/server.js` |
-| [`demo/git-graph.d.ts`](demo/git-graph.d.ts) | ambient type of the `window.GitGraph` bundle | types only |
-| [`demo/index.html`](demo/index.html) | markup and CSS; loads two compiled scripts | page shell |
+| [`packages/demo/page.ts`](packages/demo/page.ts) | page logic: model building, canvas painting, controls, filters, folder dialog | `packages/demo/build/page.js` |
+| [`packages/demo/server.ts`](packages/demo/server.ts) | static server, folder listing, git reading, browser bundle | `packages/demo/build/server.js` |
+| [`packages/demo/git-graph.d.ts`](packages/demo/git-graph.d.ts) | ambient type of the `window.GitGraph` bundle | types only |
+| [`packages/demo/index.html`](packages/demo/index.html) | markup and CSS; loads two compiled scripts | page shell |
 
 Build steps:
 
 ```sh
-ppnpm run build:lib     # src -> dist
-ppnpm run build:demo    # demo/*.ts -> demo/build/*.js
-pnpm run bundle        # dist -> demo/build/git-graph.js
+pnpm run build:lib     # src -> dist
+pnpm run build:demo    # demo/*.ts -> packages/demo/build/*.js
+pnpm run bundle        # dist -> packages/demo/build/git-graph.js
 pnpm run build         # all three
 ```
 
@@ -133,7 +139,7 @@ The page reads the repository through the local server:
 | macOS | `osascript` and `choose folder` |
 | Linux | `zenity --file-selection --directory`, then `kdialog` |
 
-The dialog opens on the desktop of the user who runs `pnpm run demo`. A cancelled
+The dialog opens on the desktop of the user who runs `ppnpm run demo`. A cancelled
 dialog returns `null` and changes nothing. If no system dialog is available (headless
 session, no Zenity), the page shows an error and the in-page folder list still works.
 In that case, type the path in the dialog and press **Go**.
@@ -145,11 +151,11 @@ missing parents.
 
 A page in a browser cannot read `.git`: the objects are compressed and packed, and a
 folder picker does not expose an absolute path. The demo therefore needs a local
-helper, and the library needs a browser bundle. Both come from `demo/server.ts`:
+helper, and the library needs a browser bundle. Both come from `packages/demo/server.ts`:
 
 | Part | Purpose |
 | --- | --- |
-| `buildBundle` | wraps `dist` into `demo/build/git-graph.js` (`window.GitGraph`) |
+| `buildBundle` | wraps `dist` into `packages/demo/build/git-graph.js` (`window.GitGraph`) |
 | `readGitHistory` | calls `git log` and `git for-each-ref` |
 | `browseDirectory` | lists folders for the dialog |
 | `createDemoServer` | serves the page and the two API endpoints |
@@ -161,9 +167,11 @@ TypeScript, not written in JavaScript by hand.
 The demo shows:
 
 - the input JSON, which you can edit and apply;
-- IntelliJ Normal order (default), IntelliSort, first-parent mode, and a branch filter;
+- several repositories in one graph; open a folder again to add another one;
+- text, hash, user, branch, date, path, revision, range, merge and repository filters;
+- IntelliJ Normal order (default), IntelliSort, first-parent mode;
 - commit subjects and refs in a text column right of the graph;
-- three color modes and custom stroke width;
+- three color modes and a row height control;
 - straight edge segments with sharp corners, no smooth curves;
 - one canvas row per commit, painted with the IntelliJ cell painter rules;
 - refs and the commit subject start right after the graph of their row, so text never
@@ -171,19 +179,32 @@ The demo shows:
 - the exact `buildGraph()` output, which you can copy as JSON;
 - a real repository from the folder picker.
 
+The demo package has its own lint and format scripts:
+
+```sh
+pnpm run lint          # eslint on packages/demo
+pnpm run format        # prettier --write on packages/demo
+```
+
 ## Input
 
 ```ts
 interface CommitInput {
   id: string;
-  parents: string[];   // a parent that is not in the input is treated as not loaded
-  subject?: string;    // optional; the demo shows it, the layout ignores it
-  timestamp: number;   // any unit; keep it consistent
+  parents: string[]; // a parent that is not in the input is treated as not loaded
+  subject?: string; // optional; the filters and the demo use it
+  timestamp: number; // any unit; keep it consistent
+  author?: string;
+  authorEmail?: string;
+  authorTime?: number; // the date filter falls back to timestamp
+  files?: string[]; // changed paths, for the structure filter
+  roots?: string[]; // filled by mergeRepositories
 }
 
 interface GraphInput {
-  commits: CommitInput[];  // topological order: a parent appears after its children
+  commits: CommitInput[]; // topological order: a parent appears after its children
   refs?: RefInput[];
+  roots?: string[];
 }
 
 interface RefInput {
@@ -226,6 +247,48 @@ Special values:
 - `to === -1`: the edge ends at a commit that is not loaded. `arrow` is `true`.
 - `long === true`: the edge is at least 30 rows long. Its middle rows carry no fragment.
 - `style === 'dashed'`: the edge passed at least one hidden commit.
+
+## Multiple repositories
+
+`mergeRepositories` combines `RepositoryInput[]` into one `GraphInput`:
+
+```ts
+import { buildGraph, mergeRepositories } from '@dynastxu/intellij-community-git-graph';
+
+const input = mergeRepositories([
+  { root: '/work/repo-a', commits: commitsA, refs: refsA },
+  { root: '/work/repo-b', commits: commitsB, refs: refsB },
+]);
+const graph = buildGraph(input);
+```
+
+The same commit in two repositories becomes one commit: parents and files unite,
+`commit.roots` records both roots, and refs keep `ref.root`.
+
+## Filters
+
+`applyFilters` follows `VcsLogFiltererImpl`: filters of different kinds combine with
+AND, values inside one filter with OR. Branch, revision and range filters also restrict
+the visible heads.
+
+```ts
+import { applyFilters, buildGraph } from '@dynastxu/intellij-community-git-graph';
+
+const result = applyFilters(input, [
+  { kind: 'text', text: 'fix' },
+  { kind: 'branch', branches: ['main'] },
+  { kind: 'date', after: Date.parse('2025-01-01') },
+  { kind: 'structure', paths: ['src'] },
+]);
+const graph = buildGraph(input, {
+  visibleCommits: (_commit, index) => result.matched[index],
+  visibleHeads: result.heads ?? undefined,
+});
+```
+
+Filter kinds: `text` (subject, id, author; `regex` and `matchCase` options), `hash`
+(prefixes), `user` (name or email), `date`, `branch`, `root`, `revision`, `range`
+(`from..to`), `parent` (merges), `structure` (paths, `*` wildcard).
 
 ## Customization
 

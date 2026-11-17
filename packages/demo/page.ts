@@ -6,29 +6,44 @@
 const graphHost = document.getElementById('list');
 if (window.GitGraph === undefined) {
   if (graphHost !== null) {
-    graphHost.textContent = 'The bundle demo/build/git-graph.js is missing. Run "npm run demo" in the project folder.';
+    graphHost.textContent = 'The bundle demo/build/git-graph.js is missing. Run "pnpm run demo" in the project folder.';
   }
-  throw new Error('git-graph.js is missing: run "npm run demo"');
+  throw new Error('git-graph.js is missing: run "pnpm run demo"');
 }
 
 const GitGraph = window.GitGraph;
 
 const SAMPLE: { commits: CommitInput[]; refs: RefInput[] } = {
   commits: [
-    { id: '4f3a2b9', parents: ['8c1e0d4', '2b7f6a1'], subject: "Merge branch 'feature/search'", timestamp: 1735689600000 },
+    {
+      id: '4f3a2b9',
+      parents: ['8c1e0d4', '2b7f6a1'],
+      subject: "Merge branch 'feature/search'",
+      timestamp: 1735689600000,
+    },
     { id: '8c1e0d4', parents: ['c5d2e8f'], subject: 'Fix null pointer in SearchIndex', timestamp: 1735686000000 },
     { id: 'c5d2e8f', parents: ['1a9b7c3'], subject: 'Polish search results header', timestamp: 1735682400000 },
     { id: '2b7f6a1', parents: ['9e4d2c8'], subject: 'Add search suggestions', timestamp: 1735678800000 },
     { id: '9e4d2c8', parents: ['1a9b7c3'], subject: 'Extract query parser', timestamp: 1735675200000 },
     { id: '1a9b7c3', parents: ['7d3c0b5'], subject: 'Update README badges', timestamp: 1735671600000 },
     { id: '7d3c0b5', parents: ['b8e6a4d'], subject: 'Version 1.2.0', timestamp: 1735668000000 },
-    { id: 'b8e6a4d', parents: ['3f5a9c2', 'e7b1d40'], subject: "Merge branch 'fix/login-timeout'", timestamp: 1735664400000 },
+    {
+      id: 'b8e6a4d',
+      parents: ['3f5a9c2', 'e7b1d40'],
+      subject: "Merge branch 'fix/login-timeout'",
+      timestamp: 1735664400000,
+    },
     { id: '3f5a9c2', parents: ['6c8e2f1'], subject: 'Add timeout retry test', timestamp: 1735660800000 },
     { id: 'e7b1d40', parents: ['6c8e2f1'], subject: 'Raise login timeout to 30s', timestamp: 1735657200000 },
     { id: '6c8e2f1', parents: ['d2a4f87'], subject: 'Tune HTTP client defaults', timestamp: 1735653600000 },
     { id: 'd2a4f87', parents: ['a6c3e1f'], subject: 'Version 1.1.0', timestamp: 1735650000000 },
     { id: 'a6c3e1f', parents: ['aa11bb2'], subject: 'Introduce config module', timestamp: 1735646400000 },
-    { id: 'aa11bb2', parents: ['cc44ee5', 'dd22cc3'], subject: "Merge branch 'docs/rewrite'", timestamp: 1735642800000 },
+    {
+      id: 'aa11bb2',
+      parents: ['cc44ee5', 'dd22cc3'],
+      subject: "Merge branch 'docs/rewrite'",
+      timestamp: 1735642800000,
+    },
     { id: 'cc44ee5', parents: ['0b9d7e4'], subject: 'Prepare the 1.1 release', timestamp: 1735639200000 },
     { id: 'dd22cc3', parents: ['ee33dd4'], subject: 'Rewrite installation guide', timestamp: 1735635600000 },
     { id: 'ee33dd4', parents: ['0b9d7e4'], subject: 'Fix docs link', timestamp: 1735632000000 },
@@ -45,7 +60,6 @@ const SAMPLE: { commits: CommitInput[]; refs: RefInput[] } = {
 };
 
 const PALETTE = ['#cf6b4a', '#4a8fcf', '#4a9c6b', '#9c6bcf', '#c9a227', '#cf4a86', '#4aa9b8', '#8c8f4a'];
-const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -57,6 +71,18 @@ const ui = {
   sort: byId<HTMLSelectElement>('sort'),
   heads: byId<HTMLSelectElement>('heads'),
   hide: byId<HTMLInputElement>('hide'),
+  fText: byId<HTMLInputElement>('fText'),
+  fHash: byId<HTMLInputElement>('fHash'),
+  fUser: byId<HTMLInputElement>('fUser'),
+  fBranch: byId<HTMLSelectElement>('fBranch'),
+  fAfter: byId<HTMLInputElement>('fAfter'),
+  fBefore: byId<HTMLInputElement>('fBefore'),
+  fPath: byId<HTMLInputElement>('fPath'),
+  fRevision: byId<HTMLInputElement>('fRevision'),
+  fRange: byId<HTMLInputElement>('fRange'),
+  fMerges: byId<HTMLSelectElement>('fMerges'),
+  fRoot: byId<HTMLSelectElement>('fRoot'),
+  repos: byId<HTMLDivElement>('repos'),
   colors: byId<HTMLSelectElement>('colors'),
   rowHeight: byId<HTMLInputElement>('rowHeight'),
   showRefs: byId<HTMLInputElement>('showRefs'),
@@ -87,11 +113,6 @@ const ui = {
   folderPick: byId<HTMLButtonElement>('folderPick'),
 };
 
-interface PageState {
-  commits: CommitInput[];
-  refs: RefInput[];
-}
-
 interface BrowseEntry {
   name: string;
   path: string;
@@ -113,10 +134,9 @@ interface GitHistoryResult {
   truncated: boolean;
 }
 
-let state: PageState = {
-  commits: GitGraph.sortTopologicallyByDate(SAMPLE.commits),
-  refs: SAMPLE.refs,
-};
+let repositories: RepositoryInput[] = [{ root: 'sample', commits: SAMPLE.commits, refs: SAMPLE.refs }];
+const initialInput = GitGraph.mergeRepositories(repositories);
+let state: GraphInput & { refs: readonly RefInput[] } = { ...initialInput, refs: initialInput.refs ?? [] };
 let model: GraphResult | null = null;
 
 const apiAvailable = location.protocol !== 'file:';
@@ -142,6 +162,38 @@ function setSource(text: string): void {
   ui.source.textContent = text;
 }
 
+function parseDateInput(value: string): number | undefined {
+  if (value.length === 0) return undefined;
+  const time = Date.parse(`${value}T00:00:00`);
+  return Number.isNaN(time) ? undefined : time;
+}
+
+function collectFilters(): Filter[] {
+  const filters: Filter[] = [];
+  const text = ui.fText.value.trim();
+  if (text.length > 0) filters.push({ kind: 'text', text });
+  const hashes = ui.fHash.value.split(/[\s,]+/).filter((value) => value.length > 0);
+  if (hashes.length > 0) filters.push({ kind: 'hash', hashes });
+  const users = ui.fUser.value.split(/[\s,]+/).filter((value) => value.length > 0);
+  if (users.length > 0) filters.push({ kind: 'user', users });
+  if (ui.fBranch.value.length > 0) filters.push({ kind: 'branch', branches: [ui.fBranch.value] });
+  const after = parseDateInput(ui.fAfter.value);
+  const before = parseDateInput(ui.fBefore.value);
+  if (after !== undefined || before !== undefined) filters.push({ kind: 'date', after, before });
+  const paths = ui.fPath.value.split(/[\s,]+/).filter((value) => value.length > 0);
+  if (paths.length > 0) filters.push({ kind: 'structure', paths });
+  const revision = ui.fRevision.value.trim();
+  if (revision.length > 0) filters.push({ kind: 'revision', commits: [revision] });
+  const range = ui.fRange.value.trim();
+  if (range.length > 0) {
+    const [from, to] = range.split('..');
+    filters.push({ kind: 'range', ranges: [{ from: from.length > 0 ? from : undefined, to: to ?? range }] });
+  }
+  if (ui.fMerges.value !== 'all') filters.push({ kind: 'parent', merges: ui.fMerges.value === 'merges' });
+  if (ui.fRoot.value.length > 0) filters.push({ kind: 'root', roots: [ui.fRoot.value] });
+  return filters;
+}
+
 function buildModel(): number {
   const options: {
     showLongEdges: boolean;
@@ -161,9 +213,27 @@ function buildModel(): number {
   } else {
     options.sort = sort as SortMode;
   }
+
+  const filters = collectFilters();
+  const result = filters.length > 0 ? GitGraph.applyFilters(state, filters) : null;
+  const matched =
+    result === null
+      ? null
+      : new Set(state.commits.filter((_, index) => result.matched[index]).map((commit) => commit.id));
   const hide = ui.hide.value.trim();
-  if (hide.length > 0) options.visibleCommits = (commit: CommitInput) => !commit.id.includes(hide);
-  if (ui.heads.value !== 'all') options.visibleHeads = [ui.heads.value];
+  if (matched !== null || hide.length > 0) {
+    options.visibleCommits = (commit: CommitInput): boolean => {
+      if (matched !== null && !matched.has(commit.id)) return false;
+      return hide.length === 0 || !commit.id.includes(hide);
+    };
+  }
+
+  if (result !== null && result.heads !== null) {
+    options.visibleHeads = [...result.heads];
+  } else if (ui.heads.value !== 'all') {
+    options.visibleHeads = [ui.heads.value];
+  }
+
   const color = colorResolver();
   if (color !== undefined) options.color = color;
 
@@ -222,12 +292,7 @@ function paintArrow(
 }
 
 /** SimpleGraphCellPainter.paintEdge: straight half-edges inside the row cell. */
-function paintEdge(
-  ctx: CanvasRenderingContext2D,
-  element: GraphEdgeElement,
-  m: GraphMetrics,
-  rowHeight: number,
-): void {
+function paintEdge(ctx: CanvasRenderingContext2D, element: GraphEdgeElement, m: GraphMetrics, rowHeight: number): void {
   const down = element.direction === 'down';
   const x1 = m.lane * element.position + m.elementCenter;
   const y1 = m.rowCenter;
@@ -425,7 +490,7 @@ function render(): void {
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
   if (!apiAvailable) {
-    throw new Error('Folder browsing needs the local demo server. Run "npm run demo" and open the printed URL.');
+    throw new Error('Folder browsing needs the local demo server. Run "pnpm run demo" and open the printed URL.');
   }
   const response = await fetch(url, init);
   const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -446,7 +511,7 @@ function openFolderDialog(): void {
   ui.folderModal.hidden = false;
   setFolderError('');
   if (!apiAvailable) {
-    setFolderError('Folder browsing needs the local demo server. Run "npm run demo" and open the printed URL.');
+    setFolderError('Folder browsing needs the local demo server. Run "pnpm run demo" and open the printed URL.');
     ui.folderList.replaceChildren();
     ui.folderPath.value = '';
     return;
@@ -463,14 +528,18 @@ async function browseFolder(path: string): Promise<void> {
     ui.folderPath.value = data.path;
     ui.folderUp.disabled = data.parent === null;
 
-    ui.folderRoots.replaceChildren(...data.roots.map((root) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'secondary';
-      button.textContent = root;
-      button.addEventListener('click', () => { void browseFolder(root); });
-      return button;
-    }));
+    ui.folderRoots.replaceChildren(
+      ...data.roots.map((root) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'secondary';
+        button.textContent = root;
+        button.addEventListener('click', () => {
+          void browseFolder(root);
+        });
+        return button;
+      }),
+    );
 
     const rows = data.entries.map((entry) => {
       const row = document.createElement('li');
@@ -496,7 +565,9 @@ async function browseFolder(path: string): Promise<void> {
       enter.className = 'enter';
       enter.textContent = '›';
       row.append(enter);
-      row.addEventListener('click', () => { void browseFolder(entry.path); });
+      row.addEventListener('click', () => {
+        void browseFolder(entry.path);
+      });
       return row;
     });
 
@@ -522,11 +593,12 @@ async function openRepository(path: string): Promise<void> {
   try {
     const limit = Number(ui.gitLimit.value) || 1000;
     const data = await apiJson<GitHistoryResult>(`/api/git?path=${encodeURIComponent(path)}&limit=${limit}`);
-    state = { commits: data.commits, refs: data.refs };
-    fillHeads();
-    fillData();
-    render();
-    setSource(`Source: ${data.root}${data.truncated ? ` (first ${data.commits.length} commits)` : ''}`);
+    const repository: RepositoryInput = { root: data.root, commits: data.commits, refs: data.refs };
+    repositories = [...repositories.filter((item) => item.root !== data.root), repository];
+    applyRepositories();
+    setSource(
+      `${data.root}${data.truncated ? ` (first ${data.commits.length} commits)` : ''} · ${repositories.length} repositories`,
+    );
     closeFolderDialog();
   } catch (error) {
     setFolderError(error instanceof Error ? error.message : String(error));
@@ -553,6 +625,57 @@ async function pickSystemFolder(): Promise<void> {
 
 // ---- controls --------------------------------------------------------------
 
+function refreshSelectors(): void {
+  const previousBranch = ui.fBranch.value;
+  const branchOptions = ['<option value="">Any branch</option>'];
+  const names = new Set<string>();
+  for (const ref of state.refs) {
+    if (names.has(ref.name)) continue;
+    names.add(ref.name);
+    branchOptions.push(`<option value="${ref.name}">${ref.name}</option>`);
+  }
+  ui.fBranch.innerHTML = branchOptions.join('');
+  ui.fBranch.value = names.has(previousBranch) ? previousBranch : '';
+
+  const previousRoot = ui.fRoot.value;
+  const roots = state.roots ?? [];
+  const rootOptions = ['<option value="">All repositories</option>'];
+  for (const root of roots) rootOptions.push(`<option value="${root}">${root}</option>`);
+  ui.fRoot.innerHTML = rootOptions.join('');
+  ui.fRoot.value = roots.includes(previousRoot) ? previousRoot : '';
+}
+
+function renderRepositories(): void {
+  const chips = repositories.map((repository) => {
+    const chip = document.createElement('span');
+    chip.className = 'repo-chip';
+    const label = document.createElement('span');
+    label.textContent = `${repository.root} (${repository.commits.length})`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.title = 'Remove this repository';
+    remove.addEventListener('click', () => {
+      repositories = repositories.filter((item) => item.root !== repository.root);
+      applyRepositories();
+    });
+    chip.append(label, remove);
+    return chip;
+  });
+  ui.repos.replaceChildren(...chips);
+}
+
+function applyRepositories(): void {
+  const merged = repositories.length === 0 ? { commits: [], refs: [] } : GitGraph.mergeRepositories(repositories);
+  state = { ...merged, refs: merged.refs ?? [] };
+  fillHeads();
+  refreshSelectors();
+  fillData();
+  renderRepositories();
+  render();
+  setSource(repositories.length === 0 ? 'Source: empty' : `Source: ${repositories.length} repositories`);
+}
+
 function fillHeads(): void {
   const previous = ui.heads.value;
   const options = ['<option value="all">All refs</option>'];
@@ -560,7 +683,10 @@ function fillHeads(): void {
   for (const ref of state.refs) {
     if (seen.has(ref.commit)) continue;
     seen.add(ref.commit);
-    const label = state.refs.filter((item) => item.commit === ref.commit).map((item) => item.name).join(', ');
+    const label = state.refs
+      .filter((item) => item.commit === ref.commit)
+      .map((item) => item.name)
+      .join(', ');
     options.push(`<option value="${ref.commit}">${label}</option>`);
   }
   ui.heads.innerHTML = options.join('');
@@ -572,8 +698,25 @@ function fillData(): void {
 }
 
 for (const control of [
-  ui.sort, ui.heads, ui.hide, ui.colors, ui.rowHeight,
-  ui.showRefs, ui.showHashes, ui.showArrows,
+  ui.sort,
+  ui.heads,
+  ui.hide,
+  ui.colors,
+  ui.rowHeight,
+  ui.showRefs,
+  ui.showHashes,
+  ui.showArrows,
+  ui.fText,
+  ui.fHash,
+  ui.fUser,
+  ui.fBranch,
+  ui.fAfter,
+  ui.fBefore,
+  ui.fPath,
+  ui.fRevision,
+  ui.fRange,
+  ui.fMerges,
+  ui.fRoot,
 ]) {
   control.addEventListener('input', render);
   control.addEventListener('change', render);
@@ -589,13 +732,14 @@ ui.apply.addEventListener('click', () => {
   try {
     const parsed = JSON.parse(ui.data.value) as { commits?: unknown; refs?: unknown };
     if (!Array.isArray(parsed.commits)) throw new Error('Expected an object with a commits array');
-    state = {
-      commits: GitGraph.sortTopologicallyByDate(parsed.commits as CommitInput[]),
-      refs: Array.isArray(parsed.refs) ? (parsed.refs as RefInput[]) : [],
-    };
-    fillHeads();
-    fillData();
-    render();
+    repositories = [
+      {
+        root: 'pasted',
+        commits: GitGraph.sortTopologicallyByDate(parsed.commits as CommitInput[]),
+        refs: Array.isArray(parsed.refs) ? (parsed.refs as RefInput[]) : [],
+      },
+    ];
+    applyRepositories();
     setSource('Source: pasted JSON');
   } catch (error) {
     ui.error.textContent = String(error instanceof Error ? error.message : error);
@@ -604,27 +748,31 @@ ui.apply.addEventListener('click', () => {
 });
 
 ui.reset.addEventListener('click', () => {
-  state = { commits: GitGraph.sortTopologicallyByDate(SAMPLE.commits), refs: SAMPLE.refs };
-  fillHeads();
-  fillData();
-  render();
+  repositories = [{ root: 'sample', commits: SAMPLE.commits, refs: SAMPLE.refs }];
+  applyRepositories();
   setSource('Source: built-in sample');
 });
 
 ui.copy.addEventListener('click', async () => {
   if (model === null) return;
-  const text = JSON.stringify(model, (_key: string, value: unknown): unknown => {
-    if (value instanceof Int32Array) return Array.from(value);
-    if (value instanceof Map) return Array.from(value.entries());
-    return value;
-  }, 2);
+  const text = JSON.stringify(
+    model,
+    (_key: string, value: unknown): unknown => {
+      if (value instanceof Int32Array) return Array.from(value);
+      if (value instanceof Map) return Array.from(value.entries());
+      return value;
+    },
+    2,
+  );
   try {
     await navigator.clipboard.writeText(text);
     ui.copy.textContent = 'Copied';
   } catch {
     ui.copy.textContent = 'Copy failed';
   }
-  setTimeout(() => { ui.copy.textContent = 'Copy drawable JSON'; }, 1200);
+  setTimeout(() => {
+    ui.copy.textContent = 'Copy drawable JSON';
+  }, 1200);
 });
 
 ui.openFolder.addEventListener('click', openFolderDialog);
@@ -635,7 +783,9 @@ ui.folderModal.addEventListener('click', (event) => {
 ui.folderUp.addEventListener('click', () => {
   if (folder.current !== null && folder.current.parent !== null) void browseFolder(folder.current.parent);
 });
-ui.folderGo.addEventListener('click', () => { void browseFolder(ui.folderPath.value); });
+ui.folderGo.addEventListener('click', () => {
+  void browseFolder(ui.folderPath.value);
+});
 ui.folderPath.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -645,7 +795,9 @@ ui.folderPath.addEventListener('keydown', (event) => {
 ui.folderOpen.addEventListener('click', () => {
   void openRepository(folder.current === null ? ui.folderPath.value : folder.current.path);
 });
-ui.folderPick.addEventListener('click', () => { void pickSystemFolder(); });
+ui.folderPick.addEventListener('click', () => {
+  void pickSystemFolder();
+});
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !ui.folderModal.hidden) closeFolderDialog();
 });
@@ -665,6 +817,5 @@ window.addEventListener('resize', () => {
   paintCanvas();
 });
 
-fillHeads();
-fillData();
-render();
+applyRepositories();
+setSource('Source: built-in sample');

@@ -1,23 +1,31 @@
 {
-  "name": "intellij-community-git-graph",
+  "name": "@dynastxu/intellij-community-git-graph",
   "version": "0.1.0",
   "description": "Git commit DAG layout ported from the IntelliJ Community Edition VCS log graph",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "NOTICE"
   ],
   "scripts": {
-    "build": "pnpm run build:lib && pnpm run build:demo && pnpm run bundle",
+    "build": "tsc -p tsconfig.json",
     "build:lib": "tsc -p tsconfig.json",
-    "build:demo": "tsc -p tsconfig.demo.json",
-    "bundle": "node demo/build/server.js bundle",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.demo.json --noEmit",
+    "build:demo": "pnpm -C packages/demo build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm -C packages/demo typecheck",
+    "lint": "pnpm -C packages/demo lint",
+    "format": "pnpm -C packages/demo format",
     "test": "node --test --test-isolation=none \"test/*.test.mjs\"",
-    "pretest": "pnpm run build",
-    "demo": "pnpm run build && node demo/build/server.js serve --open",
-    "serve:demo": "node demo/build/server.js serve"
+    "pretest": "pnpm run build && pnpm run build:demo",
+    "demo": "pnpm run build && pnpm run build:demo && node packages/demo/build/server.js serve --open",
+    "serve:demo": "node packages/demo/build/server.js serve"
   },
   "keywords": [
     "git",
@@ -28,11 +36,18 @@
     "intellisort"
   ],
   "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dynastxu/intellij-community-git-graph.git"
+  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^26.6.6",
     "jsdom": "^31.0.1",
     "typescript": "^6.0.3"
-  },
-  "private": true,
-  "packageManager": "pnpm@12.16.1"
+  }
 }

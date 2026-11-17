@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
-import { parseCommits, parseRefs, readGitHistory } from '../demo/build/server.js';
+import { parseCommits, parseRefs, readGitHistory } from '../packages/demo/build/server.js';
 
 const fixture = (name) => readFileSync(resolve('test/fixtures', name), 'utf8');
 
@@ -30,6 +30,19 @@ test('parseCommits reads hashes, parents, and millisecond timestamps', () => {
     timestamp: 1794903818000,
   });
   assert.deepEqual(commits[3].parents, []);
+});
+
+test('parseCommits reads authors and changed files from the record format', () => {
+  const unit = '\u001f';
+  const record = '\u001e';
+  const output = `${record}h1${unit}p${unit}100${unit}Alice${unit}a@example.com${unit}subject\n\nfile1\nfile2\n`;
+
+  const commits = parseCommits(output);
+  assert.equal(commits.length, 1);
+  assert.equal(commits[0].author, 'Alice');
+  assert.equal(commits[0].authorEmail, 'a@example.com');
+  assert.deepEqual(commits[0].files, ['file1', 'file2']);
+  assert.equal(commits[0].subject, 'subject');
 });
 
 test('parseRefs maps ref kinds and peels annotated tags', () => {

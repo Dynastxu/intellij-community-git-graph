@@ -40,21 +40,21 @@ function recordingContext() {
   };
 }
 
-/** Loads demo/index.html with the compiled scripts inlined, as a file:// page. */
+/** Loads packages/demo/index.html with the compiled scripts inlined, as a file:// page. */
 async function loadDemo(context = null) {
   const errors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', (error) => errors.push(String(error?.message ?? error)));
   virtualConsole.on('error', (error) => errors.push(String(error)));
 
-  const bundle = readFileSync(resolve('demo/build/git-graph.js'), 'utf8');
-  const pageScript = readFileSync(resolve('demo/build/page.js'), 'utf8');
-  const html = readFileSync(resolve('demo/index.html'), 'utf8')
-    .replace('<script src="./build/git-graph.js"></script>', `<script>${bundle}</script>`)
-    .replace('<script src="./build/page.js"></script>', `<script>${pageScript}</script>`);
+  const bundle = readFileSync(resolve('packages/demo/build/git-graph.js'), 'utf8');
+  const pageScript = readFileSync(resolve('packages/demo/build/page.js'), 'utf8');
+  const html = readFileSync(resolve('packages/demo/index.html'), 'utf8')
+    .replace('<script src="./build/git-graph.js"></script>', () => `<script>${bundle}</script>`)
+    .replace('<script src="./build/page.js"></script>', () => `<script>${pageScript}</script>`);
 
   const dom = new JSDOM(html, {
-    url: 'file:///demo/index.html',
+    url: 'file:///packages/demo/index.html',
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     virtualConsole,
@@ -70,11 +70,11 @@ async function loadHttpDemo(fetchStub) {
   const virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', (error) => errors.push(String(error?.message ?? error)));
 
-  const bundle = readFileSync(resolve('demo/build/git-graph.js'), 'utf8');
-  const pageScript = readFileSync(resolve('demo/build/page.js'), 'utf8');
-  const html = readFileSync(resolve('demo/index.html'), 'utf8')
-    .replace('<script src="./build/git-graph.js"></script>', `<script>${bundle}</script>`)
-    .replace('<script src="./build/page.js"></script>', `<script>${pageScript}</script>`);
+  const bundle = readFileSync(resolve('packages/demo/build/git-graph.js'), 'utf8');
+  const pageScript = readFileSync(resolve('packages/demo/build/page.js'), 'utf8');
+  const html = readFileSync(resolve('packages/demo/index.html'), 'utf8')
+    .replace('<script src="./build/git-graph.js"></script>', () => `<script>${bundle}</script>`)
+    .replace('<script src="./build/page.js"></script>', () => `<script>${pageScript}</script>`);
 
   const dom = new JSDOM(html, {
     url: 'http://127.0.0.1/',
@@ -147,6 +147,27 @@ test('the demo page paints nodes and straight half-edges on the canvas', async (
   }
 });
 
+test('the demo page filters rows by text and branch', async () => {
+  const { dom } = await loadDemo();
+  const { window } = dom;
+  const document = window.document;
+
+  const text = document.getElementById('fText');
+  text.value = 'login';
+  text.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert.equal(rows(dom).length, 2);
+  assert.match(document.getElementById('stats').textContent, /2 rows/);
+
+  text.value = '';
+  text.dispatchEvent(new window.Event('input', { bubbles: true }));
+  const branch = document.getElementById('fBranch');
+  branch.value = 'feature/search';
+  branch.dispatchEvent(new window.Event('change', { bubbles: true }));
+  assert.ok(rows(dom).length > 2 && rows(dom).length < 18);
+
+  dom.window.close();
+});
+
 test('the demo page reacts to the filter', async () => {
   const { dom } = await loadDemo();
   const { window } = dom;
@@ -207,7 +228,7 @@ test('the folder picker explains that it needs the server when opened from file:
 
   const error = document.getElementById('folderError');
   assert.equal(error.hidden, false);
-  assert.match(error.textContent, /npm run demo/);
+  assert.match(error.textContent, /pnpm run demo/);
   assert.equal(document.getElementById('folderModal').hidden, false);
   dom.window.close();
 });
@@ -260,7 +281,9 @@ test('the folder picker browses folders and loads a repository', async () => {
   await tick();
 
   assert.equal(modal.hidden, true);
-  assert.equal(rows(dom).length, 2);
+  // The sample stays in the list; the opened repository is added to it.
+  assert.equal(rows(dom).length, 20);
+  assert.equal(document.querySelectorAll('#repos .repo-chip').length, 2);
   assert.match(document.getElementById('source').textContent, /\/repo\/project/);
   dom.window.close();
 });

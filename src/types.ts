@@ -13,10 +13,20 @@ export interface CommitInput {
   readonly id: string;
   /** Parent identifiers. A parent that is not present in `commits` is treated as not loaded. */
   readonly parents: readonly string[];
-  /** Optional commit subject. The layout ignores it; the demo shows it. */
+  /** Optional commit subject. The layout ignores it; the filters and the demo use it. */
   readonly subject?: string;
   /** Commit timestamp. The unit must be consistent; milliseconds are recommended. */
   readonly timestamp: number;
+  /** Author name, when the history provides it. */
+  readonly author?: string;
+  /** Author email, when the history provides it. */
+  readonly authorEmail?: string;
+  /** Author time in milliseconds. The date filter falls back to `timestamp`. */
+  readonly authorTime?: number;
+  /** Paths changed by the commit, for the structure filter. */
+  readonly files?: readonly string[];
+  /** Repository roots that contain the commit. The merger fills this field. */
+  readonly roots?: readonly string[];
 }
 
 /** Kind of a ref. Affects the default head order and the default color. */
@@ -34,6 +44,16 @@ export interface RefInput {
    * When omitted, the library computes the color id from the ref name.
    */
   readonly color?: string | number;
+  /** Repository root of the ref, when the input merges several repositories. */
+  readonly root?: string;
+}
+
+/** One repository of a merged history. */
+export interface RepositoryInput {
+  /** Stable root identifier, for example the repository path. */
+  readonly root: string;
+  readonly commits: readonly CommitInput[];
+  readonly refs?: readonly RefInput[];
 }
 
 /** The input history. */
@@ -44,6 +64,8 @@ export interface GraphInput {
    */
   readonly commits: readonly CommitInput[];
   readonly refs?: readonly RefInput[];
+  /** Repository roots, filled by {@link mergeRepositories}. */
+  readonly roots?: readonly string[];
 }
 
 /** A head of the column layout, together with its refs. */
