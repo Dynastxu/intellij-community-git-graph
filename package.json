@@ -44,7 +44,7 @@
   "packageManager": "pnpm@12.16.1",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dynastxu/intellij-community-git-graph.git"
+    "url": "git+https://github.com/Dynastxu/intellij-community-git-graph.git"
   },
   "dependencies": {},
   "devDependencies": {
