@@ -1,6 +1,6 @@
 {
   "name": "@dynastxu/intellij-community-git-graph",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Git commit DAG layout ported from the IntelliJ Community Edition VCS log graph",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
